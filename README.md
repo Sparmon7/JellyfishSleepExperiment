@@ -9,7 +9,7 @@ Create an empty folder titled 'output' for the program to write the data. Additi
 
 Run the following two lines in the command line:
 
-` pip install -r requirements.txt`
+`pip install -r requirements.txt`
 
 `python main.py [firstVideoFileName] `
 
