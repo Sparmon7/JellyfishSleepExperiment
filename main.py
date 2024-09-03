@@ -50,6 +50,7 @@ def extractFrames(video):
                     ys = [i[1] for i in places]
                     
                     if np.std(xs) + np.std(ys) < 50: #checking that movement is localized
+                        #could remove from here down to just check pulses and not look at orientation of pulse or ang;e
                         medX =np.median(xs)
                         medY = np.median(ys)
                         
@@ -63,9 +64,10 @@ def extractFrames(video):
                                 center = i
                                 
                         jellyCenter, jellyRadius = findJellyCircle(frames[-1])
+                        jellyRadius = int(jellyRadius)
 
-                        dvert = jellyCenter[0] - center[0]
-                        dhor = center[1] - jellyCenter[1]
+                        dvert = int(jellyCenter[0] - center[0])
+                        dhor = int(center[1] - jellyCenter[1])
                         
                         #ensuring movement came from jellyfish
                         if  jellyRadius**2 - 10000 <dhor **2 + dvert**2 < jellyRadius**2  + 10000:
@@ -86,6 +88,7 @@ def extractFrames(video):
                             theta = calculateAngle(new, jellyCenter, jellyRadius)
                             
                             delta = datetime.timedelta(seconds = vid.get(cv2.CAP_PROP_POS_MSEC)/1000)
+                        
                             
                             #writing data
                             write([currentFrame, totalFrame + currentFrame, str(round(angle,2)), str(round(theta,2)), str(round((angle - theta) %360 , 2)), jellyCenter[0], jellyCenter[1], jellyRadius, vidnum, totalTime + delta])
@@ -181,7 +184,6 @@ def calculateAngle(img, center, radius):
 
 
 #starting program
-print(datetime.datetime.now())  
 filename, filetype = sys.argv[1].split(".")
 filename = filename[:-2]
 
@@ -202,12 +204,13 @@ while exists: #iterating through all videos
         
     if vid.get(cv2.CAP_PROP_FRAME_COUNT) == 0: #no more videos
         break
+    print(datetime.datetime.now())  
     print(f"Starting video {vidnum}")                 
     frames = extractFrames(vid)
     
     totalFrame+=frames
-    timeElapsed= vid.get(cv2.CAP_PROP_FRAME_COUNT)/vid.get(cv2.CAP_PROP_FPS)
-    delta = datetime.timedelta(seconds = timeElapsed)
+    #timeElapsed= vid.get(cv2.CAP_PROP_FRAME_COUNT)/vid.get(cv2.CAP_PROP_FPS)
+    delta = datetime.timedelta(seconds = 3600) #Assumes videos are 1 hour long. could switch to seconds=timeElapsed
     totalTime+=delta
     vidnum+=1
 
