@@ -7,7 +7,7 @@ The program uses the OpenCV library to process an ordered series of 120 fps jell
 
 To see an example, look at `video.mp4`, which is a jellyfish contraction slowed down 50x. The red dot indicates the rhopalia that first initiates the contraction, and the green lines indicate the 0-degree line and the angle of the dye marks.
 
-An earlier version of a program with a similar intent took longer than the length of each video to run on the Berkeley supercluster, but this version takes roughly 1/3 the time of a video on a traditional laptop, enabling the researchers to process results much more efficiently.
+An earlier version of a program with a similar intent took longer than the length of each video to run on the Berkeley supercluster, but this version takes 1/6 the time of a video on a MacBook, enabling the researchers to process results much more efficiently.
 ### Output
 The program outputs a csv file in the output folder containing data for each pulse including the frame (video frame and global frame), angle of pulse, angle of dye mark, adjusted angle of pulse relative to dye mark, center of jellyfish, radius of jellyfish, video number, and timestamp (using the video name and the elapsed time in the video). Additionally, this program stores the first 10 contractions with a red dot indicating where the contraction initiates as a sanity check for the code.
 ### How to run
