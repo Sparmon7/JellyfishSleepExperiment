@@ -32,99 +32,103 @@ def extractFrames(video):
     numSaved = 0 #storing number of pulses saved. goes up to 10
     
     while True:
-        #reading frame by frame
-        ret, cur = video.read()
-        if not ret:
-            break
-        frames.append(cur.copy())
-        frames = frames[-15:].copy()
-        cur = cv2.cvtColor(cur, cv2.COLOR_RGB2GRAY)
-        
-        if currentFrame!=0:
-            mask = get_mask(cur, last)
+        try:
+            #reading frame by frame
+            ret, cur = video.read()
+            if not ret:
+                break
+            frames.append(cur.copy())
+            frames = frames[-15:].copy()
+            cur = cv2.cvtColor(cur, cv2.COLOR_RGB2GRAY)
             
-            if np.sum(mask) > 30*255:#if sufficient moving consistent with a contraction
-                if numNotMoving > 3:#if stationary for a while
-                    places = list(zip(*np.where(mask == 255)))
-                    xs = [i[0] for i in places]
-                    ys = [i[1] for i in places]
-                    
-                    if np.std(xs) + np.std(ys) < 50: #checking that movement is localized
-                        #could remove from here down to just check pulses and not look at orientation of pulse or ang;e
-                        medX =np.median(xs)
-                        medY = np.median(ys)
+            if currentFrame!=0:
+                mask = get_mask(cur, last)
+                
+                if np.sum(mask) > 30*255:#if sufficient moving consistent with a contraction
+                    if numNotMoving > 3:#if stationary for a while
+                        places = list(zip(*np.where(mask == 255)))
+                        xs = [i[0] for i in places]
+                        ys = [i[1] for i in places]
                         
-                        #finding closest point to median that moved
-                        minDist = 10000
-                        center = -1
-                        for i in places:
-                            dist = np.sqrt((i[0]-medX)**2 + (i[1]-medY)**2)
-                            if dist<minDist:
-                                minDist = dist
-                                center = i
+                        if np.std(xs) + np.std(ys) < 50: #checking that movement is localized
+                            #could remove from here down to just check pulses and not look at orientation of pulse or ang;e
+                            medX =np.median(xs)
+                            medY = np.median(ys)
+                            
+                            #finding closest point to median that moved
+                            minDist = 10000
+                            center = -1
+                            for i in places:
+                                dist = np.sqrt((i[0]-medX)**2 + (i[1]-medY)**2)
+                                if dist<minDist:
+                                    minDist = dist
+                                    center = i
+                                    
+                            jellyCenter, jellyRadius = findJellyCircle(frames[-1])
+                            jellyRadius = int(jellyRadius)
+
+                            dvert = int(jellyCenter[0] - center[0])
+                            dhor = int(center[1] - jellyCenter[1])
+                            
+                            #ensuring movement came from jellyfish
+                            if  jellyRadius**2 - 10000 <dhor **2 + dvert**2 < jellyRadius**2  + 10000:
                                 
-                        jellyCenter, jellyRadius = findJellyCircle(frames[-1])
-                        jellyRadius = int(jellyRadius)
-
-                        dvert = int(jellyCenter[0] - center[0])
-                        dhor = int(center[1] - jellyCenter[1])
-                        
-                        #ensuring movement came from jellyfish
-                        if  jellyRadius**2 - 10000 <dhor **2 + dvert**2 < jellyRadius**2  + 10000:
+                                #finding angle of movement origin
+                                angle = -1
+                                if dvert == 0 and dhor < 0:
+                                    angle = 270.0
+                                elif dvert == 0 and dhor > 0:
+                                    angle = 90.0
+                                elif dvert <= 0 :
+                                    angle = 180 + math.atan(dhor/dvert)*180/math.pi
+                                else:
+                                    angle = math.atan(dhor/dvert)*180/math.pi % 360
+                                
+                                #finidng orientation of jellyfish using dye marks
+                                new = onlyJelly(frames[-1], jellyCenter, jellyRadius -10) 
+                                theta = calculateAngle(new, jellyCenter, jellyRadius)
+                                
+                                delta = datetime.timedelta(seconds = vid.get(cv2.CAP_PROP_POS_MSEC)/1000)
                             
-                            #finding angle of movement origin
-                            angle = -1
-                            if dvert == 0 and dhor < 0:
-                                angle = 270.0
-                            elif dvert == 0 and dhor > 0:
-                                angle = 90.0
-                            elif dvert <= 0 :
-                                angle = 180 + math.atan(dhor/dvert)*180/math.pi
+                                
+                                #writing data
+                                write([currentFrame, totalFrame + currentFrame, str(round(angle,2)), str(round(theta,2)), str(round((angle - theta) %360 , 2)), jellyCenter[0], jellyCenter[1], jellyRadius, vidnum, totalTime + delta])
+                                movers.append(currentFrame)
+                                movementCenters.append(center)
+                                found=True
+
+                                numNotMoving = 0
                             else:
-                                angle = math.atan(dhor/dvert)*180/math.pi % 360
-                            
-                            #finidng orientation of jellyfish using dye marks
-                            new = onlyJelly(frames[-1], jellyCenter, jellyRadius -10) 
-                            theta = calculateAngle(new, jellyCenter, jellyRadius)
-                            
-                            delta = datetime.timedelta(seconds = vid.get(cv2.CAP_PROP_POS_MSEC)/1000)
-                        
-                            
-                            #writing data
-                            write([currentFrame, totalFrame + currentFrame, str(round(angle,2)), str(round(theta,2)), str(round((angle - theta) %360 , 2)), jellyCenter[0], jellyCenter[1], jellyRadius, vidnum, totalTime + delta])
-                            movers.append(currentFrame)
-                            movementCenters.append(center)
-                            found=True
-
-                            numNotMoving = 0
+                                numNotMoving+=1
                         else:
-                            numNotMoving+=1
-                    else:
-                        numNotMoving+=1             
-            else:
-                numNotMoving+=1
+                            numNotMoving+=1             
+                else:
+                    numNotMoving+=1
+       
             
             
     
-            #saving pulse
-            if found and numSaved < 10:
-                if currentFrame == movers[-1] + 10:
-                    try: #so doesn't save if directory already exists
-                        os.mkdir(f"output/{filename}/pulse{numSaved+1}")
-                        center = movementCenters[-1]
-                        for j in range(1,16):
-                            i=frames[j-1].copy()
-                            for x in range(center[0]-3, center[0]+4):
-                                for y in range(center[1]-3, center[1]+4):
-                                    i[x, y]= [0,0,255]
-                            cv2.imwrite(f"output/{filename}/pulse{numSaved+1}/frame{j}.jpg", i)   
-                        numSaved+=1
-                    except:
-                        pass
+                #saving pulse
+                if found and numSaved < 10:
+                    if currentFrame == movers[-1] + 10:
+                        try: #so doesn't save if directory already exists
+                            os.mkdir(f"output/{filename}/pulse{numSaved+1}")
+                            center = movementCenters[-1]
+                            for j in range(1,16):
+                                i=frames[j-1].copy()
+                                for x in range(center[0]-3, center[0]+4):
+                                    for y in range(center[1]-3, center[1]+4):
+                                        i[x, y]= [0,0,255]
+                                cv2.imwrite(f"output/{filename}/pulse{numSaved+1}/frame{j}.jpg", i)   
+                            numSaved+=1
+                        except:
+                            pass
              
-        #iterate
-        currentFrame+=1
-        last = cur.copy()
+            #iterate
+            currentFrame+=1
+            last = cur.copy()
+        except Exception as e:
+            write([currentFrame, totalFrame + currentFrame, "Error", "Error", "Error", "Error", "Error", "Error", vidnum, totalTime + delta, e])
     return currentFrame
 
 #find the jellyfish center and radius
@@ -187,32 +191,36 @@ def calculateAngle(img, center, radius):
 filename, filetype = sys.argv[1].split(".")
 filename = filename[:-2]
 
-#writing output
-totalTime = datetime.datetime.strptime(filename.split("_")[0] + filename.split("_")[1], "%Y%m%d%H%M")
-os.mkdir(f"output/{filename}")
-write(["Local Frame", "Total Frame", "Angle of Pulse", "Angle of Dye Mark", "Rotated Angle Pulse", "X", "Y", "Radius", "Video", "Timestamp"])
 
-vidnum = 1
-totalFrame = 0
-exists = True
-while exists: #iterating through all videos
-    vid = None
-    if vidnum<10:
-        vid = cv2.VideoCapture("data/" + filename + "0" + str(vidnum) + "."+ filetype)
-    else:
-        vid = cv2.VideoCapture("data/" + filename + str(vidnum) + "."+ filetype)
+#writing output
+try:
+    totalTime = datetime.datetime.strptime(filename.split("_")[0] + filename.split("_")[1], "%Y%m%d%H%M")
+    os.mkdir(f"output/{filename}")
+    write(["Local Frame", "Total Frame", "Angle of Pulse", "Angle of Dye Mark", "Rotated Angle Pulse", "X", "Y", "Radius", "Video", "Timestamp"])
+
+    vidnum = 1
+    totalFrame = 0
+    exists = True
+    while exists: #iterating through all videos
+        vid = None
+        if vidnum<10:
+            vid = cv2.VideoCapture("data/" + filename + "0" + str(vidnum) + "."+ filetype)
+        else:
+            vid = cv2.VideoCapture("data/" + filename + str(vidnum) + "."+ filetype)
+            
+        if vid.get(cv2.CAP_PROP_FRAME_COUNT) == 0: #no more videos
+            break
+        print(datetime.datetime.now())  
+        print(f"Starting video {vidnum}")                 
+        frames = extractFrames(vid)
         
-    if vid.get(cv2.CAP_PROP_FRAME_COUNT) == 0: #no more videos
-        break
-    print(datetime.datetime.now())  
-    print(f"Starting video {vidnum}")                 
-    frames = extractFrames(vid)
-    
-    totalFrame+=frames
-    #timeElapsed= vid.get(cv2.CAP_PROP_FRAME_COUNT)/vid.get(cv2.CAP_PROP_FPS)
-    delta = datetime.timedelta(seconds = 3600) #Assumes videos are 1 hour long. could switch to seconds=timeElapsed
-    totalTime+=delta
-    vidnum+=1
+        totalFrame+=frames
+        #timeElapsed= vid.get(cv2.CAP_PROP_FRAME_COUNT)/vid.get(cv2.CAP_PROP_FPS)
+        delta = datetime.timedelta(seconds = 3600) #Assumes videos are 1 hour long. could switch to seconds=timeElapsed
+        totalTime+=delta
+        vidnum+=1
+except Exception as e:
+    print(e)
 
 
 
