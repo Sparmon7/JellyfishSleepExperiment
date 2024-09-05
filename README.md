@@ -1,6 +1,6 @@
 # Jellyfish Sleep Experiment
 ## Experiment
-This experiment, run by Mike Abrams and The Harland Lab at UC Berkeley, researches how the jellyfish nervous systems change between wake and sleep, particularly in response to sleep deprivation. The jellyfish nervous system consists of different neuron clusters called rhopalia. I was tasked with creating the algorithm to process hours of video data to determine both when the jellyfish contracts as well as which rhopalia initiates the contraction (since they are spread out along the circumference of the jellyfish). 
+This experiment, run by Mike Abrams and The Harland Lab at UC Berkeley, researches how the jellyfish nervous systems change between wake and sleep, particularly in response to sleep deprivation. The jellyfish nervous system consists of different neuron clusters called rhopalia. I was tasked with creating the algorithm to process hours of video data to determine both when the jellyfish contracts as well as which rhopalia initiates the contraction. 
 ## The Program
 ### How it works
 The program uses the OpenCV library to process an ordered series of 120 fps jellyfish videos. The program records each pulse by determining the difference between consecutive frames and a series of OpenCV image operations. The action is only considered a pulse if there is sufficient and localized movement on the jellyfish after having been stable for a minimum of 3 frames. The jellyfish is identified by using the HoughCircle operation. 
